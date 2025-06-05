@@ -1,8 +1,11 @@
 package com.autobots.automanager.controles;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 import com.autobots.automanager.entidades.Documento;
 import com.autobots.automanager.modelo.DocumentoAtualizador;
@@ -28,35 +32,82 @@ public class DocumentoControle {
     private DocumentoSelecionador selecionador;
 
     @GetMapping("/{id}")
-    public ResponseEntity<Documento> obterDocumento(@PathVariable long id) {
+    public ResponseEntity<EntityModel<Documento>> obterDocumento(@PathVariable long id) {
         List<Documento> documentos = repositorio.findAll();
         Documento documento = selecionador.selecionar(documentos, id);
+        
         if (documento == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-        return new ResponseEntity<>(documento, HttpStatus.OK);
+        
+        
+        EntityModel<Documento> documentoModel = EntityModel.of(documento);
+        
+   
+        documentoModel.add(linkTo(methodOn(DocumentoControle.class).obterDocumento(id)).withSelfRel());
+        
+       
+        documentoModel.add(linkTo(methodOn(DocumentoControle.class).atualizarDocumento(id, null)).withRel("update"));
+        documentoModel.add(linkTo(methodOn(DocumentoControle.class).excluirDocumento(id)).withRel("delete"));
+        
+       
+        documentoModel.add(linkTo(DocumentoControle.class).withRel("documentos"));
+        
+        return new ResponseEntity<>(documentoModel, HttpStatus.OK);
     }
 
     @GetMapping
-    public ResponseEntity<List<Documento>> obterDocumentos() {
+    public ResponseEntity<CollectionModel<EntityModel<Documento>>> obterDocumentos() {
         List<Documento> documentos = repositorio.findAll();
-        return new ResponseEntity<>(documentos, HttpStatus.OK);
+        
+      
+        List<EntityModel<Documento>> documentoModels = documentos.stream()
+            .map(documento -> {
+                EntityModel<Documento> documentoModel = EntityModel.of(documento);
+                documentoModel.add(linkTo(methodOn(DocumentoControle.class).obterDocumento(documento.getId())).withSelfRel());
+                documentoModel.add(linkTo(methodOn(DocumentoControle.class).atualizarDocumento(documento.getId(), null)).withRel("update"));
+                documentoModel.add(linkTo(methodOn(DocumentoControle.class).excluirDocumento(documento.getId())).withRel("delete"));
+                return documentoModel;
+            })
+            .collect(Collectors.toList());
+        
+       
+        CollectionModel<EntityModel<Documento>> collectionModel = CollectionModel.of(documentoModels);
+        collectionModel.add(linkTo(DocumentoControle.class).withSelfRel());
+        collectionModel.add(linkTo(methodOn(DocumentoControle.class).cadastrarDocumento(null)).withRel("create"));
+        
+        return new ResponseEntity<>(collectionModel, HttpStatus.OK);
     }
 
     @PostMapping
-    public ResponseEntity<Documento> cadastrarDocumento(@RequestBody Documento documento) {
-        repositorio.save(documento);
-        return new ResponseEntity<>(documento, HttpStatus.CREATED);
+    public ResponseEntity<EntityModel<Documento>> cadastrarDocumento(@RequestBody Documento documento) {
+        Documento documentoSalvo = repositorio.save(documento);
+        
+       
+        EntityModel<Documento> documentoModel = EntityModel.of(documentoSalvo);
+        documentoModel.add(linkTo(methodOn(DocumentoControle.class).obterDocumento(documentoSalvo.getId())).withSelfRel());
+        documentoModel.add(linkTo(methodOn(DocumentoControle.class).atualizarDocumento(documentoSalvo.getId(), null)).withRel("update"));
+        documentoModel.add(linkTo(methodOn(DocumentoControle.class).excluirDocumento(documentoSalvo.getId())).withRel("delete"));
+        documentoModel.add(linkTo(DocumentoControle.class).withRel("documentos"));
+        
+        return new ResponseEntity<>(documentoModel, HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> atualizarDocumento(@PathVariable long id, @RequestBody Documento atualizacao) {
+    public ResponseEntity<EntityModel<Documento>> atualizarDocumento(@PathVariable long id, @RequestBody Documento atualizacao) {
         if (repositorio.existsById(id)) {
             Documento documento = repositorio.getById(id);
             DocumentoAtualizador atualizador = new DocumentoAtualizador();
             atualizador.atualizar(documento, atualizacao);
-            repositorio.save(documento);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            Documento documentoAtualizado = repositorio.save(documento);
+            
+          
+            EntityModel<Documento> documentoModel = EntityModel.of(documentoAtualizado);
+            documentoModel.add(linkTo(methodOn(DocumentoControle.class).obterDocumento(id)).withSelfRel());
+            documentoModel.add(linkTo(methodOn(DocumentoControle.class).excluirDocumento(id)).withRel("delete"));
+            documentoModel.add(linkTo(DocumentoControle.class).withRel("documentos"));
+            
+            return new ResponseEntity<>(documentoModel, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
