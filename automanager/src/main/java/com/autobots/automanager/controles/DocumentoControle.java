@@ -18,9 +18,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
+import com.autobots.automanager.entidades.Cliente;
 import com.autobots.automanager.entidades.Documento;
 import com.autobots.automanager.modelo.DocumentoAtualizador;
 import com.autobots.automanager.modelo.DocumentoSelecionador;
+import com.autobots.automanager.repositorios.ClienteRepositorio;
 import com.autobots.automanager.repositorios.DocumentoRepositorio;
 
 @RestController
@@ -30,6 +32,8 @@ public class DocumentoControle {
     private DocumentoRepositorio repositorio;
     @Autowired
     private DocumentoSelecionador selecionador;
+     @Autowired
+    private ClienteRepositorio clienteRepositorio;
 
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Documento>> obterDocumento(@PathVariable long id) {
@@ -113,14 +117,28 @@ public class DocumentoControle {
         }
     }
 
-    @DeleteMapping("/{id}")
+ @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluirDocumento(@PathVariable long id) {
-        if (repositorio.existsById(id)) {
-            Documento documento = repositorio.getById(id);
-            repositorio.delete(documento);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } else {
+        if (!repositorio.existsById(id)) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+        
+        // Remove document from all clients first
+        List<Cliente> clientes = clienteRepositorio.findAll();
+        boolean wasRemoved = false;
+        for (Cliente cliente : clientes) {
+            boolean removed = cliente.getDocumentos().removeIf(doc -> doc.getId().equals(id));
+            if (removed) {
+                clienteRepositorio.save(cliente); // This triggers orphanRemoval and deletes the document
+                wasRemoved = true;
+            }
+        }
+        
+        // Only delete manually if it wasn't removed from any client
+        if (!wasRemoved && repositorio.existsById(id)) {
+            repositorio.deleteById(id);
+        }
+         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        
     }
 }
