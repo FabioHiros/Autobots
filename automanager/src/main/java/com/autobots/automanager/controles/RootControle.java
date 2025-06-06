@@ -15,30 +15,36 @@ public class RootControle {
     public ResponseEntity<ApiRoot> root() {
         ApiRoot root = new ApiRoot();
         
-   
+ 
         root.add(linkTo(ClienteControle.class).withRel("clientes"));
         root.add(linkTo(EnderecoControle.class).withRel("enderecos"));
         root.add(linkTo(DocumentoControle.class).withRel("documentos"));
         root.add(linkTo(TelefoneControle.class).withRel("telefones"));
         
-    
+      
+        root.add(linkTo(EmpresaControle.class).withRel("empresas"));
+        root.add(linkTo(VeiculoControle.class).withRel("veiculos"));
+        root.add(linkTo(MercadoriaControle.class).withRel("mercadorias"));
+        root.add(linkTo(ServicoControle.class).withRel("servicos"));
+        root.add(linkTo(VendaControle.class).withRel("vendas"));
+        
+      
         root.add(linkTo(methodOn(RootControle.class).root()).withSelfRel());
         
         return ResponseEntity.ok(root);
     }
     
-   
     public static class ApiRoot extends RepresentationModel<ApiRoot> {
         private final String message = "AutoBots API - Sistema de Gestão Veicular";
-        private final String description = "API RESTful para gestão de veículos";
-        
+        private final String description = "API RESTful para gestão completa de veículos, clientes, empresas, mercadorias, serviços e vendas";
+
         public String getMessage() {
             return message;
         }
         
-       
         public String getDescription() {
             return description;
         }
+ 
     }
 }
