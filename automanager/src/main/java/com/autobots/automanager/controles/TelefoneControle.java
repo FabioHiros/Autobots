@@ -14,9 +14,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.autobots.automanager.entidades.Cliente;
 import com.autobots.automanager.entidades.Telefone;
 import com.autobots.automanager.modelo.TelefoneAtualizador;
 import com.autobots.automanager.modelo.TelefoneSelecionador;
+import com.autobots.automanager.repositorios.ClienteRepositorio;
 import com.autobots.automanager.repositorios.TelefoneRepositorio;
 
 @RestController
@@ -24,6 +26,8 @@ import com.autobots.automanager.repositorios.TelefoneRepositorio;
 public class TelefoneControle {
     @Autowired
     private TelefoneRepositorio repositorio;
+    @Autowired
+    private ClienteRepositorio clienteRepositorio;
     @Autowired
     private TelefoneSelecionador selecionador;
 
@@ -52,7 +56,7 @@ public class TelefoneControle {
     @PutMapping("/{id}")
     public ResponseEntity<Void> atualizarTelefone(@PathVariable long id, @RequestBody Telefone atualizacao) {
         if (repositorio.existsById(id)) {
-            Telefone telefone = repositorio.getById(id);
+            Telefone telefone = repositorio.findById(id).get();
             TelefoneAtualizador atualizador = new TelefoneAtualizador();
             atualizador.atualizar(telefone, atualizacao);
             repositorio.save(telefone);
@@ -64,12 +68,26 @@ public class TelefoneControle {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluirTelefone(@PathVariable long id) {
-        if (repositorio.existsById(id)) {
-            Telefone telefone = repositorio.getById(id);
-            repositorio.delete(telefone);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } else {
+        if (!repositorio.existsById(id)) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+        
+        // Remove phone from all clients first
+        List<Cliente> clientes = clienteRepositorio.findAll();
+        boolean wasRemoved = false;
+        for (Cliente cliente : clientes) {
+            boolean removed = cliente.getTelefones().removeIf(tel -> tel.getId().equals(id));
+            if (removed) {
+                clienteRepositorio.save(cliente); // This triggers orphanRemoval and deletes the phone
+                wasRemoved = true;
+            }
+        }
+        
+        // Only delete manually if it wasn't removed from any client
+        if (!wasRemoved && repositorio.existsById(id)) {
+            repositorio.deleteById(id);
+        }
+        
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }

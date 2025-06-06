@@ -14,9 +14,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.autobots.automanager.entidades.Cliente;
 import com.autobots.automanager.entidades.Endereco;
 import com.autobots.automanager.modelo.EnderecoAtualizador;
 import com.autobots.automanager.modelo.EnderecoSelecionador;
+import com.autobots.automanager.repositorios.ClienteRepositorio;
 import com.autobots.automanager.repositorios.EnderecoRepositorio;
 
 @RestController
@@ -24,6 +26,8 @@ import com.autobots.automanager.repositorios.EnderecoRepositorio;
 public class EnderecoControle {
     @Autowired
     private EnderecoRepositorio repositorio;
+    @Autowired
+    private ClienteRepositorio clienteRepositorio;
     @Autowired
     private EnderecoSelecionador selecionador;
 
@@ -52,7 +56,7 @@ public class EnderecoControle {
     @PutMapping("/{id}")
     public ResponseEntity<Void> atualizarEndereco(@PathVariable long id, @RequestBody Endereco atualizacao) {
         if (repositorio.existsById(id)) {
-            Endereco endereco = repositorio.getById(id);
+            Endereco endereco = repositorio.findById(id).get();
             EnderecoAtualizador atualizador = new EnderecoAtualizador();
             atualizador.atualizar(endereco, atualizacao);
             repositorio.save(endereco);
@@ -64,12 +68,26 @@ public class EnderecoControle {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluirEndereco(@PathVariable long id) {
-        if (repositorio.existsById(id)) {
-            Endereco endereco = repositorio.getById(id);
-            repositorio.delete(endereco);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } else {
+        if (!repositorio.existsById(id)) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+        
+        // Remove address from all clients first
+        List<Cliente> clientes = clienteRepositorio.findAll();
+        boolean wasRemoved = false;
+        for (Cliente cliente : clientes) {
+            if (cliente.getEndereco() != null && cliente.getEndereco().getId().equals(id)) {
+                cliente.setEndereco(null);
+                clienteRepositorio.save(cliente); // This triggers orphanRemoval and deletes the address
+                wasRemoved = true;
+            }
+        }
+        
+        // Only delete manually if it wasn't removed from any client
+        if (!wasRemoved && repositorio.existsById(id)) {
+            repositorio.deleteById(id);
+        }
+        
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }
