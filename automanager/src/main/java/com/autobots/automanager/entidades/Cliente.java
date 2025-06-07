@@ -44,13 +44,16 @@ public class Cliente {
 	@Column
 	private PerfilUsuario perfil;
 	
-	@OneToMany(orphanRemoval = true, cascade = CascadeType.ALL)
+	@OneToMany(cascade = CascadeType.ALL, fetch = javax.persistence.FetchType.LAZY)
+	@JoinColumn(name = "cliente_id")
 	private List<Documento> documentos = new ArrayList<>();
 	
 	@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
 	private Endereco endereco;
 	
-	@OneToMany(orphanRemoval = true, cascade = CascadeType.ALL)
+
+	@OneToMany(cascade = CascadeType.ALL, fetch = javax.persistence.FetchType.LAZY)
+	@JoinColumn(name = "cliente_id")
 	private List<Telefone> telefones = new ArrayList<>();
 	
 	@OneToMany(mappedBy = "proprietario", cascade = CascadeType.ALL)
@@ -68,4 +71,21 @@ public class Cliente {
 	@OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
 	@JsonIgnore
 	private List<Venda> vendas = new ArrayList<>();
+	
+	
+	public void addDocumento(Documento documento) {
+		documentos.add(documento);
+	}
+	
+	public void removeDocumento(Documento documento) {
+		documentos.remove(documento);
+	}
+	
+	public void addTelefone(Telefone telefone) {
+		telefones.add(telefone);
+	}
+	
+	public void removeTelefone(Telefone telefone) {
+		telefones.remove(telefone);
+	}
 }

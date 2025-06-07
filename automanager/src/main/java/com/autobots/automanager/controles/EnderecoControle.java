@@ -18,9 +18,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
+import com.autobots.automanager.entidades.Cliente;
 import com.autobots.automanager.entidades.Endereco;
+import com.autobots.automanager.entidades.Empresa;
 import com.autobots.automanager.modelo.EnderecoAtualizador;
 import com.autobots.automanager.modelo.EnderecoSelecionador;
+import com.autobots.automanager.repositorios.ClienteRepositorio;
+import com.autobots.automanager.repositorios.EmpresaRepositorio;
 import com.autobots.automanager.repositorios.EnderecoRepositorio;
 
 @RestController
@@ -30,6 +34,10 @@ public class EnderecoControle {
     private EnderecoRepositorio repositorio;
     @Autowired
     private EnderecoSelecionador selecionador;
+    @Autowired
+    private ClienteRepositorio clienteRepositorio;
+    @Autowired
+    private EmpresaRepositorio empresaRepositorio;
 
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Endereco>> obterEndereco(@PathVariable long id) {
@@ -42,14 +50,13 @@ public class EnderecoControle {
         
         EntityModel<Endereco> enderecoModel = EntityModel.of(endereco);
         
-      
+  
         enderecoModel.add(linkTo(methodOn(EnderecoControle.class).obterEndereco(id)).withSelfRel());
         
-      
+       
         enderecoModel.add(linkTo(methodOn(EnderecoControle.class).atualizarEndereco(id, null)).withRel("update"));
         enderecoModel.add(linkTo(methodOn(EnderecoControle.class).excluirEndereco(id)).withRel("delete"));
         
-   
         enderecoModel.add(linkTo(EnderecoControle.class).withRel("enderecos"));
         
         return new ResponseEntity<>(enderecoModel, HttpStatus.OK);
@@ -111,9 +118,35 @@ public class EnderecoControle {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluirEndereco(@PathVariable long id) {
         if (repositorio.existsById(id)) {
-            Endereco endereco = repositorio.getById(id);
-            repositorio.delete(endereco);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            try {
+                Endereco endereco = repositorio.getById(id);
+                
+             
+                List<Cliente> clientes = clienteRepositorio.findAll();
+                for (Cliente cliente : clientes) {
+                    if (cliente.getEndereco() != null && cliente.getEndereco().getId().equals(id)) {
+                        cliente.setEndereco(null);
+                        clienteRepositorio.save(cliente);
+                    }
+                }
+                
+                
+                List<Empresa> empresas = empresaRepositorio.findAll();
+                for (Empresa empresa : empresas) {
+                    if (empresa.getEndereco() != null && empresa.getEndereco().getId().equals(id)) {
+                        empresa.setEndereco(null);
+                        empresaRepositorio.save(empresa);
+                    }
+                }
+                
+                
+                repositorio.delete(endereco);
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            } catch (Exception e) {
+             
+                System.err.println("Error deleting endereco: " + e.getMessage());
+                return new ResponseEntity<>(HttpStatus.CONFLICT);
+            }
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }

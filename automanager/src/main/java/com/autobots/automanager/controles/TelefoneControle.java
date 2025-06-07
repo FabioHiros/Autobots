@@ -18,9 +18,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
+import com.autobots.automanager.entidades.Cliente;
+import com.autobots.automanager.entidades.Endereco;
 import com.autobots.automanager.entidades.Telefone;
+import com.autobots.automanager.entidades.Empresa;
+import com.autobots.automanager.modelo.EnderecoAtualizador;
+import com.autobots.automanager.modelo.EnderecoSelecionador;
 import com.autobots.automanager.modelo.TelefoneAtualizador;
 import com.autobots.automanager.modelo.TelefoneSelecionador;
+import com.autobots.automanager.repositorios.ClienteRepositorio;
+import com.autobots.automanager.repositorios.EmpresaRepositorio;
+import com.autobots.automanager.repositorios.EnderecoRepositorio;
 import com.autobots.automanager.repositorios.TelefoneRepositorio;
 
 @RestController
@@ -30,6 +38,10 @@ public class TelefoneControle {
     private TelefoneRepositorio repositorio;
     @Autowired
     private TelefoneSelecionador selecionador;
+    @Autowired
+    private ClienteRepositorio clienteRepositorio;
+    @Autowired
+    private EmpresaRepositorio empresaRepositorio;
 
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Telefone>> obterTelefone(@PathVariable long id) {
@@ -42,14 +54,13 @@ public class TelefoneControle {
         
         EntityModel<Telefone> telefoneModel = EntityModel.of(telefone);
         
-    
+      
         telefoneModel.add(linkTo(methodOn(TelefoneControle.class).obterTelefone(id)).withSelfRel());
         
-       
+      
         telefoneModel.add(linkTo(methodOn(TelefoneControle.class).atualizarTelefone(id, null)).withRel("update"));
         telefoneModel.add(linkTo(methodOn(TelefoneControle.class).excluirTelefone(id)).withRel("delete"));
-        
-     
+      
         telefoneModel.add(linkTo(TelefoneControle.class).withRel("telefones"));
         
         return new ResponseEntity<>(telefoneModel, HttpStatus.OK);
@@ -111,9 +122,35 @@ public class TelefoneControle {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluirTelefone(@PathVariable long id) {
         if (repositorio.existsById(id)) {
-            Telefone telefone = repositorio.getById(id);
-            repositorio.delete(telefone);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            try {
+                Telefone telefone = repositorio.getById(id);
+                
+
+                List<Cliente> clientes = clienteRepositorio.findAll();
+                for (Cliente cliente : clientes) {
+                    if (cliente.getTelefones().contains(telefone)) {
+                        cliente.getTelefones().remove(telefone);
+                        clienteRepositorio.save(cliente);
+                    }
+                }
+                
+             
+                List<Empresa> empresas = empresaRepositorio.findAll();
+                for (Empresa empresa : empresas) {
+                    if (empresa.getTelefones().contains(telefone)) {
+                        empresa.getTelefones().remove(telefone);
+                        empresaRepositorio.save(empresa);
+                    }
+                }
+                
+            
+                repositorio.delete(telefone);
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            } catch (Exception e) {
+             
+                System.err.println("Error deleting telefone: " + e.getMessage());
+                return new ResponseEntity<>(HttpStatus.CONFLICT);
+            }
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }

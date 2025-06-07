@@ -18,9 +18,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
+import com.autobots.automanager.entidades.Cliente;
 import com.autobots.automanager.entidades.Documento;
 import com.autobots.automanager.modelo.DocumentoAtualizador;
 import com.autobots.automanager.modelo.DocumentoSelecionador;
+import com.autobots.automanager.repositorios.ClienteRepositorio;
 import com.autobots.automanager.repositorios.DocumentoRepositorio;
 
 @RestController
@@ -30,6 +32,8 @@ public class DocumentoControle {
     private DocumentoRepositorio repositorio;
     @Autowired
     private DocumentoSelecionador selecionador;
+    @Autowired
+    private ClienteRepositorio clienteRepositorio;
 
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Documento>> obterDocumento(@PathVariable long id) {
@@ -40,17 +44,16 @@ public class DocumentoControle {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         
-        
         EntityModel<Documento> documentoModel = EntityModel.of(documento);
         
-   
+       
         documentoModel.add(linkTo(methodOn(DocumentoControle.class).obterDocumento(id)).withSelfRel());
         
-       
+     
         documentoModel.add(linkTo(methodOn(DocumentoControle.class).atualizarDocumento(id, null)).withRel("update"));
         documentoModel.add(linkTo(methodOn(DocumentoControle.class).excluirDocumento(id)).withRel("delete"));
         
-       
+      
         documentoModel.add(linkTo(DocumentoControle.class).withRel("documentos"));
         
         return new ResponseEntity<>(documentoModel, HttpStatus.OK);
@@ -60,7 +63,6 @@ public class DocumentoControle {
     public ResponseEntity<CollectionModel<EntityModel<Documento>>> obterDocumentos() {
         List<Documento> documentos = repositorio.findAll();
         
-      
         List<EntityModel<Documento>> documentoModels = documentos.stream()
             .map(documento -> {
                 EntityModel<Documento> documentoModel = EntityModel.of(documento);
@@ -71,7 +73,6 @@ public class DocumentoControle {
             })
             .collect(Collectors.toList());
         
-       
         CollectionModel<EntityModel<Documento>> collectionModel = CollectionModel.of(documentoModels);
         collectionModel.add(linkTo(DocumentoControle.class).withSelfRel());
         collectionModel.add(linkTo(methodOn(DocumentoControle.class).cadastrarDocumento(null)).withRel("create"));
@@ -83,7 +84,6 @@ public class DocumentoControle {
     public ResponseEntity<EntityModel<Documento>> cadastrarDocumento(@RequestBody Documento documento) {
         Documento documentoSalvo = repositorio.save(documento);
         
-       
         EntityModel<Documento> documentoModel = EntityModel.of(documentoSalvo);
         documentoModel.add(linkTo(methodOn(DocumentoControle.class).obterDocumento(documentoSalvo.getId())).withSelfRel());
         documentoModel.add(linkTo(methodOn(DocumentoControle.class).atualizarDocumento(documentoSalvo.getId(), null)).withRel("update"));
@@ -101,7 +101,6 @@ public class DocumentoControle {
             atualizador.atualizar(documento, atualizacao);
             Documento documentoAtualizado = repositorio.save(documento);
             
-          
             EntityModel<Documento> documentoModel = EntityModel.of(documentoAtualizado);
             documentoModel.add(linkTo(methodOn(DocumentoControle.class).obterDocumento(id)).withSelfRel());
             documentoModel.add(linkTo(methodOn(DocumentoControle.class).excluirDocumento(id)).withRel("delete"));
@@ -116,9 +115,26 @@ public class DocumentoControle {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluirDocumento(@PathVariable long id) {
         if (repositorio.existsById(id)) {
-            Documento documento = repositorio.getById(id);
-            repositorio.delete(documento);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            try {
+                Documento documento = repositorio.getById(id);
+                
+                
+                List<Cliente> clientes = clienteRepositorio.findAll();
+                for (Cliente cliente : clientes) {
+                    if (cliente.getDocumentos().contains(documento)) {
+                        cliente.getDocumentos().remove(documento);
+                        clienteRepositorio.save(cliente);
+                    }
+                }
+                
+             
+                repositorio.delete(documento);
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            } catch (Exception e) {
+            
+                System.err.println("Error deleting documento: " + e.getMessage());
+                return new ResponseEntity<>(HttpStatus.CONFLICT);
+            }
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
