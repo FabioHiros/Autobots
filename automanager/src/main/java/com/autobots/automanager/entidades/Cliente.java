@@ -51,7 +51,6 @@ public class Cliente {
 	@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
 	private Endereco endereco;
 	
-
 	@OneToMany(cascade = CascadeType.ALL, fetch = javax.persistence.FetchType.LAZY)
 	@JoinColumn(name = "cliente_id")
 	private List<Telefone> telefones = new ArrayList<>();
@@ -65,13 +64,14 @@ public class Cliente {
 	@JsonIgnore
 	private Empresa empresa;
 	
-	@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-	private CredencialUsuario credencial;
+
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@JoinColumn(name = "cliente_id")
+	private List<Credencial> credenciais = new ArrayList<>();
 	
 	@OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL)
 	@JsonIgnore
 	private List<Venda> vendas = new ArrayList<>();
-	
 	
 	public void addDocumento(Documento documento) {
 		documentos.add(documento);
@@ -81,11 +81,39 @@ public class Cliente {
 		documentos.remove(documento);
 	}
 	
+	
 	public void addTelefone(Telefone telefone) {
 		telefones.add(telefone);
 	}
 	
 	public void removeTelefone(Telefone telefone) {
 		telefones.remove(telefone);
+	}
+	
+
+	public void addCredencial(Credencial credencial) {
+		credenciais.add(credencial);
+	}
+	
+	public void removeCredencial(Credencial credencial) {
+		credenciais.remove(credencial);
+	}
+	
+	
+	// @JsonIgnore
+	public CredencialUsuario getCredencialUsuario() {
+		return credenciais.stream()
+			.filter(c -> c instanceof CredencialUsuario)
+			.map(c -> (CredencialUsuario) c)
+			.findFirst()
+			.orElse(null);
+	}
+	// @JsonIgnore
+	public CredencialCodigoBarra getCredencialBarcode() {
+		return credenciais.stream()
+			.filter(c -> c instanceof CredencialCodigoBarra)
+			.map(c -> (CredencialCodigoBarra) c)
+			.findFirst()
+			.orElse(null);
 	}
 }

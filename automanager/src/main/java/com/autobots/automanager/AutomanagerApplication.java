@@ -42,7 +42,7 @@ public class AutomanagerApplication {
         public void run(ApplicationArguments args) throws Exception {
             Calendar calendario = Calendar.getInstance();
             
-            // Criar empresa
+           
             Empresa empresa = new Empresa();
             empresa.setRazaoSocial("AutoBots Ltda");
             empresa.setNomeFantasia("AutoBots");
@@ -62,7 +62,7 @@ public class AutomanagerApplication {
             telefoneEmpresa.setNumero("30001234");
             empresa.getTelefones().add(telefoneEmpresa);
             
-            // Criar mercadorias
+           
             Mercadoria oleo = new Mercadoria();
             oleo.setNome("Óleo de Motor 5W30");
             oleo.setDescricao("Óleo sintético para motores");
@@ -81,7 +81,7 @@ public class AutomanagerApplication {
             filtro.setEmpresa(empresa);
             empresa.getMercadorias().add(filtro);
             
-            // Criar serviços
+            
             Servico trocaOleo = new Servico();
             trocaOleo.setNome("Troca de Óleo");
             trocaOleo.setDescricao("Troca completa de óleo do motor");
@@ -96,10 +96,10 @@ public class AutomanagerApplication {
             revisao.setEmpresa(empresa);
             empresa.getServicos().add(revisao);
             
-            // Salvar empresa primeiro
+           
             empresa = empresaRepositorio.save(empresa);
             
-            // Criar cliente
+         
             calendario.set(2002, 05, 15);
             Cliente cliente = new Cliente();
             cliente.setNome("Pedro Alcântara de Bragança e Bourbon");
@@ -135,15 +135,16 @@ public class AutomanagerApplication {
             cliente.getDocumentos().add(rg);
             cliente.getDocumentos().add(cpf);
             
-            // Criar credencial
+            
             CredencialUsuario credencial = new CredencialUsuario();
             credencial.setNomeUsuario("dompedro");
             credencial.setSenha("imperio123");
             credencial.setInativo(false);
+            credencial.setCriacao(Calendar.getInstance().getTime());
             credencial.setDataCriacao(Calendar.getInstance().getTime());
-            cliente.setCredencial(credencial);
+            cliente.addCredencial(credencial);
             
-            // Criar veículo
+          
             Veiculo veiculo = new Veiculo();
             veiculo.setTipo(TipoVeiculo.CARRO);
             veiculo.setModelo("Mercedes-Benz S-Class");
@@ -151,19 +152,21 @@ public class AutomanagerApplication {
             veiculo.setProprietario(cliente);
             cliente.getVeiculos().add(veiculo);
             
-            // Criar funcionário
+       
             Cliente funcionario = new Cliente();
             funcionario.setNome("José da Silva");
             funcionario.setDataCadastro(Calendar.getInstance().getTime());
             funcionario.setPerfil(PerfilUsuario.FUNCIONARIO);
             funcionario.setEmpresa(empresa);
             
+          
             CredencialUsuario credencialFunc = new CredencialUsuario();
             credencialFunc.setNomeUsuario("jose.silva");
             credencialFunc.setSenha("func123");
             credencialFunc.setInativo(false);
+            credencialFunc.setCriacao(Calendar.getInstance().getTime());
             credencialFunc.setDataCriacao(Calendar.getInstance().getTime());
-            funcionario.setCredencial(credencialFunc);
+            funcionario.addCredencial(credencialFunc);
             
             Endereco enderecoFunc = new Endereco();
             enderecoFunc.setEstado("São Paulo");
@@ -184,11 +187,11 @@ public class AutomanagerApplication {
             cpfFunc.setNumero("12345678900");
             funcionario.getDocumentos().add(cpfFunc);
             
-            // Salvar clientes
+          
             clienteRepositorio.save(cliente);
             clienteRepositorio.save(funcionario);
             
-            // Atualizar empresa com usuários
+           
             empresa.getUsuarios().add(cliente);
             empresa.getUsuarios().add(funcionario);
             empresaRepositorio.save(empresa);

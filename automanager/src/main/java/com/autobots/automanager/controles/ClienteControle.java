@@ -1,12 +1,12 @@
 package com.autobots.automanager.controles;
 
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,10 +19,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
+import com.autobots.automanager.dto.ClienteRegistroDTO;
 import com.autobots.automanager.entidades.Cliente;
+import com.autobots.automanager.entidades.CredencialCodigoBarra;
+import com.autobots.automanager.entidades.CredencialUsuario;
 import com.autobots.automanager.modelo.ClienteAtualizador;
 import com.autobots.automanager.modelo.ClienteSelecionador;
 import com.autobots.automanager.repositorios.ClienteRepositorio;
+import com.autobots.automanager.servicos.CodigoBarrasGerador;
 
 @RestController
 @RequestMapping("/cliente")
@@ -31,6 +35,8 @@ public class ClienteControle {
     private ClienteRepositorio repositorio;
     @Autowired
     private ClienteSelecionador selecionador;
+    @Autowired
+    private CodigoBarrasGerador codigoBarrasGerador;
 
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Cliente>> obterCliente(@PathVariable long id) {
@@ -41,20 +47,12 @@ public class ClienteControle {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         
-       
         EntityModel<Cliente> clienteModel = EntityModel.of(cliente);
-        
-       
         clienteModel.add(linkTo(methodOn(ClienteControle.class).obterCliente(id)).withSelfRel());
-        
-        
         clienteModel.add(linkTo(methodOn(ClienteControle.class).atualizarCliente(id, null)).withRel("update"));
         clienteModel.add(linkTo(methodOn(ClienteControle.class).excluirCliente(id)).withRel("delete"));
-        
-  
         clienteModel.add(linkTo(ClienteControle.class).withRel("clientes"));
         
-       
         if (cliente.getEndereco() != null) {
             clienteModel.add(linkTo(methodOn(EnderecoControle.class).obterEndereco(cliente.getEndereco().getId())).withRel("endereco"));
         }
@@ -64,7 +62,7 @@ public class ClienteControle {
         }
         
         if (!cliente.getDocumentos().isEmpty()) {
-            clienteModel.add(linkTo(ClienteControle.class).slash(id).slash("documentos").withRel("documentos"));
+            clienteModel.add(linkTo(ClienteControle.class).slash("documentos").withRel("documentos"));
         }
         
         return new ResponseEntity<>(clienteModel, HttpStatus.OK);
@@ -74,7 +72,6 @@ public class ClienteControle {
     public ResponseEntity<CollectionModel<EntityModel<Cliente>>> obterClientes() {
         List<Cliente> clientes = repositorio.findAll();
         
-     
         List<EntityModel<Cliente>> clienteModels = clientes.stream()
             .map(cliente -> {
                 EntityModel<Cliente> clienteModel = EntityModel.of(cliente);
@@ -85,7 +82,6 @@ public class ClienteControle {
             })
             .collect(Collectors.toList());
         
-      
         CollectionModel<EntityModel<Cliente>> collectionModel = CollectionModel.of(clienteModels);
         collectionModel.add(linkTo(ClienteControle.class).withSelfRel());
         collectionModel.add(linkTo(methodOn(ClienteControle.class).cadastrarCliente(null)).withRel("create"));
@@ -93,11 +89,45 @@ public class ClienteControle {
         return new ResponseEntity<>(collectionModel, HttpStatus.OK);
     }
 
+    // SINGLE POST METHOD - Creates client with BOTH username/password AND barcode
     @PostMapping
-    public ResponseEntity<EntityModel<Cliente>> cadastrarCliente(@RequestBody Cliente cliente) {
+    public ResponseEntity<EntityModel<Cliente>> cadastrarCliente(@RequestBody ClienteRegistroDTO dto) {
+        
+        // Create client entity
+        Cliente cliente = new Cliente();
+        cliente.setNome(dto.getNome());
+        cliente.setNomeSocial(dto.getNomeSocial());
+        cliente.setDataNascimento(dto.getDataNascimento());
+        cliente.setPerfil(dto.getPerfil());
+        cliente.setDataCadastro(new Date());
+        cliente.setEndereco(dto.getEndereco());
+        cliente.setDocumentos(dto.getDocumentos());
+        cliente.setTelefones(dto.getTelefones());
+        
+        // 1. CREATE USERNAME/PASSWORD CREDENTIAL
+        CredencialUsuario credencialUsuario = new CredencialUsuario();
+        credencialUsuario.setNomeUsuario(dto.getNomeUsuario());
+        credencialUsuario.setSenha(dto.getSenha());
+        credencialUsuario.setCriacao(new Date());
+        credencialUsuario.setDataCriacao(new Date());
+        credencialUsuario.setInativo(false);
+        
+        // 2. AUTO-GENERATE BARCODE CREDENTIAL
+        CredencialCodigoBarra credencialBarcode = new CredencialCodigoBarra();
+        String codigoGerado = codigoBarrasGerador.gerarCodigoPorPerfil(
+            cliente.getPerfil() != null ? cliente.getPerfil().toString() : "CLIENTE"
+        );
+        credencialBarcode.setCodigo(codigoGerado);
+        credencialBarcode.setCriacao(new Date());
+        credencialBarcode.setInativo(false);
+        
+        // 3. ADD BOTH CREDENTIALS TO CLIENT
+        cliente.addCredencial(credencialUsuario);
+        cliente.addCredencial(credencialBarcode);
+        
+        // Save client with both credentials
         Cliente clienteSalvo = repositorio.save(cliente);
         
-       
         EntityModel<Cliente> clienteModel = EntityModel.of(clienteSalvo);
         clienteModel.add(linkTo(methodOn(ClienteControle.class).obterCliente(clienteSalvo.getId())).withSelfRel());
         clienteModel.add(linkTo(methodOn(ClienteControle.class).atualizarCliente(clienteSalvo.getId(), null)).withRel("update"));
@@ -115,7 +145,6 @@ public class ClienteControle {
             atualizador.atualizar(cliente, atualizacao);
             Cliente clienteAtualizado = repositorio.save(cliente);
             
-      
             EntityModel<Cliente> clienteModel = EntityModel.of(clienteAtualizado);
             clienteModel.add(linkTo(methodOn(ClienteControle.class).obterCliente(id)).withSelfRel());
             clienteModel.add(linkTo(methodOn(ClienteControle.class).excluirCliente(id)).withRel("delete"));
@@ -138,7 +167,6 @@ public class ClienteControle {
         }
     }
     
-  
     @GetMapping("/{id}/telefones")
     public ResponseEntity<CollectionModel<EntityModel<Object>>> obterTelefonesCliente(@PathVariable long id) {
         List<Cliente> clientes = repositorio.findAll();

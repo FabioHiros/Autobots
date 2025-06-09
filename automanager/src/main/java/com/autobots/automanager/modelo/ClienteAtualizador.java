@@ -27,9 +27,9 @@ public class ClienteAtualizador {
         if (atualizacao.getEmpresa() != null) {
             cliente.setEmpresa(atualizacao.getEmpresa());
         }
-        if (atualizacao.getCredencial() != null) {
-            cliente.setCredencial(atualizacao.getCredencial());
-        }
+        
+        // REMOVED: Old credential logic
+        // Credentials are now managed separately and shouldn't be updated this way
     }
 
     public void atualizar(Cliente cliente, Cliente atualizacao) {
