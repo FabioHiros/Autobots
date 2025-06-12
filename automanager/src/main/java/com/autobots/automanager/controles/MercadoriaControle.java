@@ -8,6 +8,7 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +32,8 @@ public class MercadoriaControle {
     @Autowired
     private MercadoriaSelecionador selecionador;
 
+    // ver mercadoria especifica
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'VENDEDOR')")
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Mercadoria>> obterMercadoria(@PathVariable long id) {
         List<Mercadoria> mercadorias = repositorio.findAll();
@@ -41,25 +44,16 @@ public class MercadoriaControle {
         }
         
         EntityModel<Mercadoria> mercadoriaModel = EntityModel.of(mercadoria);
-        
-        // Self link
         mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).obterMercadoria(id)).withSelfRel());
-        
-        // CRUD links
         mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).atualizarMercadoria(id, null)).withRel("update"));
         mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).excluirMercadoria(id)).withRel("delete"));
-        
-        // Collection link
         mercadoriaModel.add(linkTo(MercadoriaControle.class).withRel("mercadorias"));
-        
-        // Related entities links
-        if (mercadoria.getEmpresa() != null) {
-            mercadoriaModel.add(linkTo(methodOn(EmpresaControle.class).obterEmpresa(mercadoria.getEmpresa().getId())).withRel("empresa"));
-        }
         
         return new ResponseEntity<>(mercadoriaModel, HttpStatus.OK);
     }
 
+    // ver mercadorias
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'VENDEDOR')")
     @GetMapping
     public ResponseEntity<CollectionModel<EntityModel<Mercadoria>>> obterMercadorias() {
         List<Mercadoria> mercadorias = repositorio.findAll();
@@ -68,32 +62,30 @@ public class MercadoriaControle {
             .map(mercadoria -> {
                 EntityModel<Mercadoria> mercadoriaModel = EntityModel.of(mercadoria);
                 mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).obterMercadoria(mercadoria.getId())).withSelfRel());
-                mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).atualizarMercadoria(mercadoria.getId(), null)).withRel("update"));
-                mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).excluirMercadoria(mercadoria.getId())).withRel("delete"));
                 return mercadoriaModel;
             })
             .collect(Collectors.toList());
         
         CollectionModel<EntityModel<Mercadoria>> collectionModel = CollectionModel.of(mercadoriaModels);
         collectionModel.add(linkTo(MercadoriaControle.class).withSelfRel());
-        collectionModel.add(linkTo(methodOn(MercadoriaControle.class).cadastrarMercadoria(null)).withRel("create"));
         
         return new ResponseEntity<>(collectionModel, HttpStatus.OK);
     }
 
+    // criar mercadoria
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @PostMapping
     public ResponseEntity<EntityModel<Mercadoria>> cadastrarMercadoria(@RequestBody Mercadoria mercadoria) {
         Mercadoria mercadoriaSalva = repositorio.save(mercadoria);
         
         EntityModel<Mercadoria> mercadoriaModel = EntityModel.of(mercadoriaSalva);
         mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).obterMercadoria(mercadoriaSalva.getId())).withSelfRel());
-        mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).atualizarMercadoria(mercadoriaSalva.getId(), null)).withRel("update"));
-        mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).excluirMercadoria(mercadoriaSalva.getId())).withRel("delete"));
-        mercadoriaModel.add(linkTo(MercadoriaControle.class).withRel("mercadorias"));
         
         return new ResponseEntity<>(mercadoriaModel, HttpStatus.CREATED);
     }
 
+    // atualizar mercadoria
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @PutMapping("/{id}")
     public ResponseEntity<EntityModel<Mercadoria>> atualizarMercadoria(@PathVariable long id, @RequestBody Mercadoria atualizacao) {
         if (repositorio.existsById(id)) {
@@ -104,8 +96,6 @@ public class MercadoriaControle {
             
             EntityModel<Mercadoria> mercadoriaModel = EntityModel.of(mercadoriaAtualizada);
             mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).obterMercadoria(id)).withSelfRel());
-            mercadoriaModel.add(linkTo(methodOn(MercadoriaControle.class).excluirMercadoria(id)).withRel("delete"));
-            mercadoriaModel.add(linkTo(MercadoriaControle.class).withRel("mercadorias"));
             
             return new ResponseEntity<>(mercadoriaModel, HttpStatus.OK);
         } else {
@@ -113,6 +103,8 @@ public class MercadoriaControle {
         }
     }
 
+    // deletar mercadoria
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluirMercadoria(@PathVariable long id) {
         if (repositorio.existsById(id)) {

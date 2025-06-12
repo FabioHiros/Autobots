@@ -32,11 +32,17 @@ public class CodigoBarrasGerador {
             case "CLIENTE":
                 prefixoPerfil = "C";
                 break;
-            case "FUNCIONARIO":
-                prefixoPerfil = "F";
+            case "VENDEDOR":
+                prefixoPerfil = "V";
                 break;
             case "FORNECEDOR":
                 prefixoPerfil = "R";
+                break;
+            case "ADMIN":
+                prefixoPerfil = "A";
+                break;
+            case "GERENTE":
+                prefixoPerfil = "G";
                 break;
             default:
                 prefixoPerfil = "U";

@@ -16,6 +16,27 @@
 		<java.version>17</java.version>
 	</properties>
 	<dependencies>
+
+
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+
+<!-- JWT Library (REQUIRED) -->
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt</artifactId>
+    <version>0.9.1</version>
+</dependency>
+
+<!-- Validation (RECOMMENDED) -->
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-validation</artifactId>
+</dependency>
+
+
 	
 <dependency>
     <groupId>org.springdoc</groupId>

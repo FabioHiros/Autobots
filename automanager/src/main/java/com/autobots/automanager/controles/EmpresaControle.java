@@ -8,6 +8,7 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,6 +39,8 @@ public class EmpresaControle {
     @Autowired
     private ClienteSelecionador clienteSelecionador;
 
+    // ver empresa especifica
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Empresa>> obterEmpresa(@PathVariable long id) {
         List<Empresa> empresas = repositorio.findAll();
@@ -48,16 +51,10 @@ public class EmpresaControle {
         }
         
         EntityModel<Empresa> empresaModel = EntityModel.of(empresa);
-  
         empresaModel.add(linkTo(methodOn(EmpresaControle.class).obterEmpresa(id)).withSelfRel());
-        
-     
-        empresaModel.add(linkTo(methodOn(EmpresaControle.class).atualizarEmpresa(id, null)).withRel("update"));
+        empresaModel.add(linkTo(methodOn(EmpresaControle.class).atualizarEmpresa(id, new Empresa())).withRel("update"));
         empresaModel.add(linkTo(methodOn(EmpresaControle.class).excluirEmpresa(id)).withRel("delete"));
-        
-        
         empresaModel.add(linkTo(EmpresaControle.class).withRel("empresas"));
-        
         
         if (empresa.getEndereco() != null) {
             empresaModel.add(linkTo(methodOn(EnderecoControle.class).obterEndereco(empresa.getEndereco().getId())).withRel("endereco"));
@@ -78,6 +75,8 @@ public class EmpresaControle {
         return new ResponseEntity<>(empresaModel, HttpStatus.OK);
     }
 
+    // só adm consegue ver as empresas
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @GetMapping
     public ResponseEntity<CollectionModel<EntityModel<Empresa>>> obterEmpresas() {
         List<Empresa> empresas = repositorio.findAll();
@@ -86,7 +85,7 @@ public class EmpresaControle {
             .map(empresa -> {
                 EntityModel<Empresa> empresaModel = EntityModel.of(empresa);
                 empresaModel.add(linkTo(methodOn(EmpresaControle.class).obterEmpresa(empresa.getId())).withSelfRel());
-                empresaModel.add(linkTo(methodOn(EmpresaControle.class).atualizarEmpresa(empresa.getId(), null)).withRel("update"));
+                empresaModel.add(linkTo(methodOn(EmpresaControle.class).atualizarEmpresa(empresa.getId(), new Empresa())).withRel("update"));
                 empresaModel.add(linkTo(methodOn(EmpresaControle.class).excluirEmpresa(empresa.getId())).withRel("delete"));
                 return empresaModel;
             })
@@ -94,24 +93,28 @@ public class EmpresaControle {
         
         CollectionModel<EntityModel<Empresa>> collectionModel = CollectionModel.of(empresaModels);
         collectionModel.add(linkTo(EmpresaControle.class).withSelfRel());
-        collectionModel.add(linkTo(methodOn(EmpresaControle.class).cadastrarEmpresa(null)).withRel("create"));
+        collectionModel.add(linkTo(methodOn(EmpresaControle.class).cadastrarEmpresa(new Empresa())).withRel("create"));
         
         return new ResponseEntity<>(collectionModel, HttpStatus.OK);
     }
 
+    // criar empresa
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<EntityModel<Empresa>> cadastrarEmpresa(@RequestBody Empresa empresa) {
         Empresa empresaSalva = repositorio.save(empresa);
         
         EntityModel<Empresa> empresaModel = EntityModel.of(empresaSalva);
         empresaModel.add(linkTo(methodOn(EmpresaControle.class).obterEmpresa(empresaSalva.getId())).withSelfRel());
-        empresaModel.add(linkTo(methodOn(EmpresaControle.class).atualizarEmpresa(empresaSalva.getId(), null)).withRel("update"));
+        empresaModel.add(linkTo(methodOn(EmpresaControle.class).atualizarEmpresa(empresaSalva.getId(), new Empresa())).withRel("update"));
         empresaModel.add(linkTo(methodOn(EmpresaControle.class).excluirEmpresa(empresaSalva.getId())).withRel("delete"));
         empresaModel.add(linkTo(EmpresaControle.class).withRel("empresas"));
         
         return new ResponseEntity<>(empresaModel, HttpStatus.CREATED);
     }
 
+    // atualizar empresa
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<EntityModel<Empresa>> atualizarEmpresa(@PathVariable long id, @RequestBody Empresa atualizacao) {
         if (repositorio.existsById(id)) {
@@ -131,6 +134,8 @@ public class EmpresaControle {
         }
     }
 
+    // deletar empresa
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluirEmpresa(@PathVariable long id) {
         if (repositorio.existsById(id)) {
@@ -139,14 +144,14 @@ public class EmpresaControle {
                 repositorio.delete(empresa);
                 return new ResponseEntity<>(HttpStatus.NO_CONTENT);
             } catch (Exception e) {
-              
                 return new ResponseEntity<>(HttpStatus.CONFLICT);
             }
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
-    
+    // ver funcionarios de uma empresa
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @GetMapping("/{id}/usuarios")
     public ResponseEntity<CollectionModel<EntityModel<Object>>> obterUsuariosEmpresa(@PathVariable long id) {
         List<Empresa> empresas = repositorio.findAll();
@@ -167,7 +172,8 @@ public class EmpresaControle {
         
         return new ResponseEntity<>(collectionModel, HttpStatus.OK);
     }
-    
+    // ver servicos da emppresa
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE','VENDEDOR')")
     @GetMapping("/{id}/servicos")
     public ResponseEntity<CollectionModel<EntityModel<Object>>> obterServicosEmpresa(@PathVariable long id) {
         List<Empresa> empresas = repositorio.findAll();
@@ -188,7 +194,8 @@ public class EmpresaControle {
         
         return new ResponseEntity<>(collectionModel, HttpStatus.OK);
     }
-    
+    //ver mercadorias da empresa
+    @PreAuthorize("hasAnyRole('ADMIN','GERENTE','VENDEDOR')")
     @GetMapping("/{id}/mercadorias")
     public ResponseEntity<CollectionModel<EntityModel<Object>>> obterMercadoriasEmpresa(@PathVariable long id) {
         List<Empresa> empresas = repositorio.findAll();
@@ -209,7 +216,8 @@ public class EmpresaControle {
         
         return new ResponseEntity<>(collectionModel, HttpStatus.OK);
     }
-    
+    //ver vendas da empresa
+    @PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
     @GetMapping("/{id}/vendas")
     public ResponseEntity<CollectionModel<EntityModel<Object>>> obterVendasEmpresa(@PathVariable long id) {
         List<Empresa> empresas = repositorio.findAll();
@@ -230,7 +238,8 @@ public class EmpresaControle {
         
         return new ResponseEntity<>(collectionModel, HttpStatus.OK);
     }
-    
+    // adicionar usuarios a uma empresa
+    @PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
     @PostMapping("/{empresaId}/usuarios/{usuarioId}")
     public ResponseEntity<EntityModel<Cliente>> adicionarUsuarioEmpresa(@PathVariable long empresaId, @PathVariable long usuarioId) {
         List<Empresa> empresas = repositorio.findAll();
@@ -240,7 +249,6 @@ public class EmpresaControle {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         
-     
         List<Cliente> clientes = clienteRepositorio.findAll();
         Cliente usuario = clienteSelecionador.selecionar(clientes, usuarioId);
         
@@ -251,16 +259,14 @@ public class EmpresaControle {
         usuario.setEmpresa(empresa);
         Cliente usuarioAtualizado = clienteRepositorio.save(usuario);
         
-      
         EntityModel<Cliente> usuarioModel = EntityModel.of(usuarioAtualizado);
         usuarioModel.add(linkTo(methodOn(ClienteControle.class).obterCliente(usuarioId)).withSelfRel());
         usuarioModel.add(linkTo(methodOn(EmpresaControle.class).obterEmpresa(empresaId)).withRel("empresa"));
-        usuarioModel.add(linkTo(methodOn(EmpresaControle.class).obterUsuariosEmpresa(empresaId)).withRel("empresa-usuarios"));
-        usuarioModel.add(linkTo(methodOn(EmpresaControle.class).removerUsuarioEmpresa(empresaId, usuarioId)).withRel("remove-from-empresa"));
         
         return new ResponseEntity<>(usuarioModel, HttpStatus.OK);
     }
-    
+    //remover usuarios de uma empresa
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @DeleteMapping("/{empresaId}/usuarios/{usuarioId}")
     public ResponseEntity<Void> removerUsuarioEmpresa(@PathVariable long empresaId, @PathVariable long usuarioId) {
         List<Empresa> empresas = repositorio.findAll();
@@ -270,7 +276,6 @@ public class EmpresaControle {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         
-      
         List<Cliente> clientes = clienteRepositorio.findAll();
         Cliente usuario = clienteSelecionador.selecionar(clientes, usuarioId);
         
@@ -278,11 +283,9 @@ public class EmpresaControle {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         
-        
         if (usuario.getEmpresa() == null || !usuario.getEmpresa().getId().equals(empresaId)) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
-        
         
         usuario.setEmpresa(null);
         clienteRepositorio.save(usuario);

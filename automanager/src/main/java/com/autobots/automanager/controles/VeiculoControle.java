@@ -8,6 +8,7 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +32,8 @@ public class VeiculoControle {
     @Autowired
     private VeiculoSelecionador selecionador;
 
+    // ver veiculo espeficifico
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'VENDEDOR')")
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<Veiculo>> obterVeiculo(@PathVariable long id) {
         List<Veiculo> veiculos = repositorio.findAll();
@@ -41,16 +44,11 @@ public class VeiculoControle {
         }
         
         EntityModel<Veiculo> veiculoModel = EntityModel.of(veiculo);
-        
-       
         veiculoModel.add(linkTo(methodOn(VeiculoControle.class).obterVeiculo(id)).withSelfRel());
-        
-     
-        veiculoModel.add(linkTo(methodOn(VeiculoControle.class).atualizarVeiculo(id, null)).withRel("update"));
+        veiculoModel.add(linkTo(methodOn(VeiculoControle.class).atualizarVeiculo(id, new Veiculo())).withRel("update"));
         veiculoModel.add(linkTo(methodOn(VeiculoControle.class).excluirVeiculo(id)).withRel("delete"));
-     
         veiculoModel.add(linkTo(VeiculoControle.class).withRel("veiculos"));
-      
+        
         if (veiculo.getProprietario() != null) {
             veiculoModel.add(linkTo(methodOn(ClienteControle.class).obterCliente(veiculo.getProprietario().getId())).withRel("proprietario"));
         }
@@ -58,6 +56,8 @@ public class VeiculoControle {
         return new ResponseEntity<>(veiculoModel, HttpStatus.OK);
     }
 
+    // ver veiculos
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE', 'VENDEDOR')")
     @GetMapping
     public ResponseEntity<CollectionModel<EntityModel<Veiculo>>> obterVeiculos() {
         List<Veiculo> veiculos = repositorio.findAll();
@@ -66,7 +66,7 @@ public class VeiculoControle {
             .map(veiculo -> {
                 EntityModel<Veiculo> veiculoModel = EntityModel.of(veiculo);
                 veiculoModel.add(linkTo(methodOn(VeiculoControle.class).obterVeiculo(veiculo.getId())).withSelfRel());
-                veiculoModel.add(linkTo(methodOn(VeiculoControle.class).atualizarVeiculo(veiculo.getId(), null)).withRel("update"));
+                veiculoModel.add(linkTo(methodOn(VeiculoControle.class).atualizarVeiculo(veiculo.getId(), new Veiculo())).withRel("update"));
                 veiculoModel.add(linkTo(methodOn(VeiculoControle.class).excluirVeiculo(veiculo.getId())).withRel("delete"));
                 return veiculoModel;
             })
@@ -74,24 +74,28 @@ public class VeiculoControle {
         
         CollectionModel<EntityModel<Veiculo>> collectionModel = CollectionModel.of(veiculoModels);
         collectionModel.add(linkTo(VeiculoControle.class).withSelfRel());
-        collectionModel.add(linkTo(methodOn(VeiculoControle.class).cadastrarVeiculo(null)).withRel("create"));
+        collectionModel.add(linkTo(methodOn(VeiculoControle.class).cadastrarVeiculo(new Veiculo())).withRel("create"));
         
         return new ResponseEntity<>(collectionModel, HttpStatus.OK);
     }
 
+    // somento admin e gerente podem adicionar um veiculo
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @PostMapping
     public ResponseEntity<EntityModel<Veiculo>> cadastrarVeiculo(@RequestBody Veiculo veiculo) {
         Veiculo veiculoSalvo = repositorio.save(veiculo);
         
         EntityModel<Veiculo> veiculoModel = EntityModel.of(veiculoSalvo);
         veiculoModel.add(linkTo(methodOn(VeiculoControle.class).obterVeiculo(veiculoSalvo.getId())).withSelfRel());
-        veiculoModel.add(linkTo(methodOn(VeiculoControle.class).atualizarVeiculo(veiculoSalvo.getId(), null)).withRel("update"));
+        veiculoModel.add(linkTo(methodOn(VeiculoControle.class).atualizarVeiculo(veiculoSalvo.getId(), new Veiculo())).withRel("update"));
         veiculoModel.add(linkTo(methodOn(VeiculoControle.class).excluirVeiculo(veiculoSalvo.getId())).withRel("delete"));
         veiculoModel.add(linkTo(VeiculoControle.class).withRel("veiculos"));
         
         return new ResponseEntity<>(veiculoModel, HttpStatus.CREATED);
     }
 
+    // só admins e gerentes podem atualizar um veiculo
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @PutMapping("/{id}")
     public ResponseEntity<EntityModel<Veiculo>> atualizarVeiculo(@PathVariable long id, @RequestBody Veiculo atualizacao) {
         if (repositorio.existsById(id)) {
@@ -111,6 +115,8 @@ public class VeiculoControle {
         }
     }
 
+    // só gerente e admin podem deletas veiculos
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluirVeiculo(@PathVariable long id) {
         if (repositorio.existsById(id)) {

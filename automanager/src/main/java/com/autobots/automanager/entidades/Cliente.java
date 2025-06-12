@@ -9,6 +9,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -44,14 +45,16 @@ public class Cliente {
 	@Column
 	private PerfilUsuario perfil;
 	
-	@OneToMany(cascade = CascadeType.ALL, fetch = javax.persistence.FetchType.LAZY)
+	
+	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	@JoinColumn(name = "cliente_id")
 	private List<Documento> documentos = new ArrayList<>();
 	
 	@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
 	private Endereco endereco;
 	
-	@OneToMany(cascade = CascadeType.ALL, fetch = javax.persistence.FetchType.LAZY)
+	
+	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	@JoinColumn(name = "cliente_id")
 	private List<Telefone> telefones = new ArrayList<>();
 	
@@ -63,9 +66,8 @@ public class Cliente {
 	@JoinColumn(name = "empresa_id")
 	@JsonIgnore
 	private Empresa empresa;
-	
 
-	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
 	@JoinColumn(name = "cliente_id")
 	private List<Credencial> credenciais = new ArrayList<>();
 	
@@ -81,7 +83,6 @@ public class Cliente {
 		documentos.remove(documento);
 	}
 	
-	
 	public void addTelefone(Telefone telefone) {
 		telefones.add(telefone);
 	}
@@ -90,7 +91,6 @@ public class Cliente {
 		telefones.remove(telefone);
 	}
 	
-
 	public void addCredencial(Credencial credencial) {
 		credenciais.add(credencial);
 	}
@@ -99,17 +99,18 @@ public class Cliente {
 		credenciais.remove(credencial);
 	}
 	
-	
-	// @JsonIgnore
+	@JsonIgnore
 	public CredencialUsuario getCredencialUsuario() {
+		if (credenciais == null) return null;
 		return credenciais.stream()
 			.filter(c -> c instanceof CredencialUsuario)
 			.map(c -> (CredencialUsuario) c)
 			.findFirst()
 			.orElse(null);
 	}
-	// @JsonIgnore
+	@JsonIgnore
 	public CredencialCodigoBarra getCredencialBarcode() {
+		if (credenciais == null) return null;
 		return credenciais.stream()
 			.filter(c -> c instanceof CredencialCodigoBarra)
 			.map(c -> (CredencialCodigoBarra) c)
